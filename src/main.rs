@@ -68,7 +68,7 @@ impl SocialClient {
     }
 
     pub fn init_user(&self, user: &Keypair, seed_type: &str) -> Result<(), Box<dyn Error>> {
-        let social_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref()]);
+        let social_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), seed_type.as_bytes()]);
         let init_user_data = SocialInstruction::Init{seed_type: seed_type.to_string()};
         let init_user_acc = vec![
             AccountMeta::new(user.pubkey(), true),
@@ -108,7 +108,7 @@ fn get_social_pda(program_id: &Pubkey, seed: &[&[u8]]) -> Pubkey {
 fn main() -> Result<(), Box<dyn Error>> {
     // let user_profile = UserProfile::new();
     // print!("user profile len is {:?}", borsh::to_vec(&user_profile).unwrap().len());
-    let program_id = Pubkey::from_str("3oGiCBRcQgZxwYPHvm6JZ9NknCiyWmZhQkTu6nrKChWf")?;
+    let program_id = Pubkey::from_str("7DGy2um3GUoptaPYbKfAknhvsjYt97noMKEcHZw7Eqgf")?;
     let user = read_keypair_file("/home/hantong/.config/solana/id-local.json")?;
     let social_client = SocialClient::new("http://127.0.0.1:8899", program_id);
     social_client.init_user(&user, USER_PROFILE_SEED)?;
