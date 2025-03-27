@@ -117,6 +117,60 @@ impl SocialClient {
         Ok(())
     }
 
+    pub fn unfollow_user(&self, user: &Keypair, follow_user: Pubkey) -> Result<(), Box<dyn Error>> {
+        let social_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), USER_PROFILE_SEED.as_bytes()]);
+        let unfollow_user_data = SocialInstruction::Unfollow(follow_user);
+        let unfollow_user_acc = vec![
+            AccountMeta::new(social_pda, false),
+        ];
+        let unfollow_user_ins = Instruction::new_with_borsh(
+            self.program_id,
+            &unfollow_user_data,
+            unfollow_user_acc
+        );
+        let sign = self.send_instruction(user, vec![unfollow_user_ins])?;
+        println!("unfollow user success, sign: {:?}", sign);
+        Ok(())
+    }
+
+    pub fn post(&self, user: &Keypair, content:String, id: u64) -> Result<(), Box<dyn Error>> {
+        let social_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), USER_POST_SEED.as_bytes()]);
+        let social_post_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), USER_POST_SEED.as_bytes(), &[id as u8]]);
+        let user_post_data = SocialInstruction::Post(content);
+        let user_post_acc = vec![
+            AccountMeta::new(user.pubkey(), true),
+            AccountMeta::new(social_pda, false),
+            AccountMeta::new(social_post_pda, false),
+            AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
+        ];
+        let user_post_ins = Instruction::new_with_borsh(
+            self.program_id,
+            &user_post_data,
+            user_post_acc
+        );
+        let sign = self.send_instruction(user, vec![user_post_ins])?;
+        println!("user post success, sign: {:?}", sign);
+        Ok(())
+    }
+
+    pub fn query_post(&self, user: &Keypair, id: u64) -> Result<(), Box<dyn Error>> {
+        let social_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), USER_POST_SEED.as_bytes()]);
+        let social_post_pda = get_social_pda(&self.program_id, &[user.pubkey().as_ref(), USER_POST_SEED.as_bytes(), &[id as u8]]);
+        let query_post_data = SocialInstruction::QueryPosts;
+        let query_post_acc = vec![
+            AccountMeta::new(social_pda, false),
+            AccountMeta::new(social_post_pda, false),
+        ];
+        let query_post_ins = Instruction::new_with_borsh(
+            self.program_id,
+            &query_post_data,
+            query_post_acc
+        );
+        let sign = self.send_instruction(user, vec![query_post_ins])?;
+        println!("query post success, sign: {:?}", sign);
+        Ok(())
+    }
+
     pub fn send_instruction(&self, payer: &Keypair, instructions: Vec<Instruction>) -> Result<(Signature), Box<dyn Error>> {
         let latest_blockhash = self.rpc_client.get_latest_blockhash()?;
         let tx = Transaction::new_signed_with_payer(
@@ -143,9 +197,25 @@ fn main() -> Result<(), Box<dyn Error>> {
     let program_id = Pubkey::from_str("AbiXdK7xj8T3HsgUPKxhYhNQJ8DsujgxeBz9Q8bcfPxu")?;
     let user = read_keypair_file("/home/hantong/.config/solana/id-local.json")?;
     let social_client = SocialClient::new("http://127.0.0.1:8899", program_id);
+    // 初始化账号
     social_client.init_user(&user, USER_PROFILE_SEED)?;
     let follower_user = Pubkey::from_str("CAz782xYgu4q8zcg5VDafaRLCLDq6FiYPXFSqX5xQtWJ")?;
+    // 关注
     social_client.follow_user(&user, follower_user)?;
+    // 查询关注
     social_client.query_follow(&user)?;
+    // 取消关注
+    social_client.unfollow_user(&user, follower_user)?;
+    // 查询关注
+    social_client.query_follow(&user)?;
+
+    // // 初始化post账户
+    // social_client.init_user(&user, USER_POST_SEED)?;
+    // // 发送帖子
+    // let id = 1;
+    // let content = "1: hello".to_string();
+    // social_client.post(&user, content, id)?;
+    // // 查询帖子
+    // social_client.query_post(&user, id)?;
     Ok(())
 }
